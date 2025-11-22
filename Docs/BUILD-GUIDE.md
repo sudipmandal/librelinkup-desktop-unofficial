@@ -1,6 +1,34 @@
 # Cross-Platform Build Guide
 
-This guide explains how to build LibreLink Desktop for Windows, Linux, and macOS platforms.
+This guide explains how to build LibreLinkUp Desktop for Windows, Linux, and macOS platforms.
+
+## Quick Start (Development)
+
+### Installation
+
+```powershell
+npm install
+```
+
+### Development Mode
+
+```powershell
+npm run tauri dev
+```
+
+The first build takes 5-15 minutes as Rust compiles dependencies. Subsequent builds are much faster.
+
+## How It Works
+
+1. **Login**: Enter your LibreLinkUp credentials (email, password, region)
+2. **Auto-login**: Credentials are saved for automatic login on startup
+3. **Compact View**: Window shrinks to 249×58px showing glucose data
+4. **Color Feedback**: Background changes based on glucose range:
+   - 🟢 Green: 4.2-10.0 mmol/L (target range)
+   - 🟠 Orange: 10.1-13.9 mmol/L (elevated)
+   - 🔴 Red: Outside ranges (requires attention)
+5. **Auto-refresh**: Data updates every 30 seconds
+6. **Settings Access**: Gear icon (⚙) in top-right for logout
 
 ## Supported Platforms
 
@@ -350,9 +378,59 @@ codegen-units = 1
 - Linux: Sign .deb with GPG key
 - AppImage: Include signature file
 
+## Development & Customization
+
+### Storage System
+The app uses Tauri Store Plugin for credential and preference storage. Data is stored in:
+- Windows: `%APPDATA%\com.sudipmandal.lldunofficial\settings.json`
+- Linux: `~/.config/com.sudipmandal.lldunofficial/settings.json`
+- macOS: `~/Library/Application Support/com.sudipmandal.lldunofficial/settings.json`
+
+**For storage implementation details, see [STORAGE-GUIDE.md](STORAGE-GUIDE.md)**
+
+### Vue.js Development
+The frontend uses Vue 3 with Options API for component structure. For coding standards and best practices, see [VUE-STYLE-GUIDE.md](VUE-STYLE-GUIDE.md)
+
+### Customizing Glucose Thresholds
+Edit the `glucoseBackgroundColor()` method in `src/App.vue` to adjust color-coded ranges:
+```typescript
+glucoseBackgroundColor(): string {
+  const value = this.cgmData?.glucoseMeasurement?.ValueInMgPerDl;
+  // Adjust these thresholds:
+  if (value >= 4.2 && value <= 10) return '#4ade80';    // Green
+  if (value >= 10.1 && value <= 13.9) return '#fb923c'; // Orange
+  return '#ef4444';  // Red
+}
+```
+
+## Troubleshooting
+
+**Login fails silently:**
+- Check browser dev tools console (F12) for API errors
+- Verify your LibreLinkUp credentials work on the official app/website
+- Ensure correct region is selected
+
+**Build errors:**
+- Verify Rust is installed: `rustc --version`
+- Update Rust: `rustup update`
+- Clear build cache: Remove `src-tauri/target/` folder
+
+**Window resize not working:**
+- Check `src-tauri/capabilities/default.json` has window resize permissions
+- Verify `core:window:allow-set-size` and `core:window:allow-set-resizable` are present
+
+**CORS errors:**
+- Make sure you're using Tauri's fetch from `@tauri-apps/plugin-http`, not browser fetch
+- Check `src-tauri/capabilities/default.json` has HTTP plugin permissions
+
+**For detailed troubleshooting and verification, see [VERIFICATION.md](VERIFICATION.md)**
+
 ## Next Steps
 
 - Set up automated builds with GitHub Actions
 - Configure code signing
 - Create update mechanism with Tauri's updater
 - Set up download page for releases
+- Customize glucose thresholds for your needs
+- Add historical data visualization
+- Export data to CSV/JSON
