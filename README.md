@@ -23,6 +23,10 @@ A lightweight, cross-platform desktop application for monitoring your LibreLinkU
 - 🌓 **Dark Mode Support**: Adapts to system theme preferences
 - 💻 **Cross-platform**: Windows (MSI/NSIS) and Linux (.deb/AppImage)
 
+## 📸 Screenshot
+
+![LibreLinkUp Desktop Screenshot](src/assets/screenshot.png)
+
 ## 📥 Installation & Usage
 
 ### Download Pre-built App
