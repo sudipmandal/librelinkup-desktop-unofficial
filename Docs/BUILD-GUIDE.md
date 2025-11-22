@@ -109,12 +109,12 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
 ```bash
 cd /mnt/c/sources/LibreLinkupDesktop-TauriApp
 npm install
-npm run build:linux
+npm run tauri build
 ```
 
 ### Building Windows Binaries on Linux (Not Recommended)
 
-Cross-compiling Windows binaries from Linux is complex due to Rust toolchain requirements. 
+Cross-compiling Windows binaries from Linux is complex due to Rust and Windows WebView2 requirements. 
 **Recommended**: Use Windows for Windows builds, Linux for Linux builds, or use CI/CD.
 
 ## CI/CD Cross-Platform Builds
@@ -133,7 +133,7 @@ jobs:
       - uses: actions/setup-node@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: npm install
-      - run: npm run build:windows
+      - run: npm run tauri build
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installers
@@ -150,7 +150,7 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
             libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm install
-      - run: npm run build:linux
+      - run: npm run tauri build
       - uses: actions/upload-artifact@v4
         with:
           name: linux-packages
@@ -224,7 +224,8 @@ The application is frontend-only:
 - **Vue 3 + TypeScript** (Options API) for UI
 - **Tauri 2.x + Rust** for native desktop wrapper
 - **tauri-plugin-http** for LibreLinkUp API calls (bypasses CORS)
-- **tauri-plugin-store** for encrypted settings persistence
+- **tauri-plugin-store** for settings persistence (plain text JSON)
+- **tauri-plugin-opener** for opening external links
 
 ## Testing Builds
 

@@ -137,40 +137,44 @@ export default defineComponent({
 ## Port Configuration
 
 - **Vue Dev Server**: http://localhost:1420
-- **C# Backend**: http://localhost:5000
-
-To change C# backend port:
-1. Edit `src-csharp/Program.cs` → `UseUrls("http://localhost:YOUR_PORT")`
-2. Update all fetch URLs in `src/App.vue`
+- **LibreLinkUp API**: https://api-{country}.libreview.io/llu
 
 ## Build Output Locations
 
 - **Development**: 
-  - Rust: `src-tauri/target/debug/`
-  - C#: `src-tauri/binaries/`
+  - Rust: `src-tauri/target/debug/librelinkup-desktop-unofficial.exe`
   
 - **Production**: 
-  - Windows MSI: `src-tauri/target/release/bundle/msi/`
-  - Windows NSIS: `src-tauri/target/release/bundle/nsis/`
-  - Linux .deb: `src-tauri/target/release/bundle/deb/`
-  - Linux AppImage: `src-tauri/target/release/bundle/appimage/`
-  - Raw executable: `src-tauri/target/release/`
+  - Windows MSI: `src-tauri/target/release/bundle/msi/LibreLinkup Desktop - Unofficial_*.msi`
+  - Windows NSIS: `src-tauri/target/release/bundle/nsis/LibreLinkup Desktop - Unofficial_*_x64-setup.exe`
+  - Linux .deb: `src-tauri/target/release/bundle/deb/librelinkup-desktop-unofficial_*_amd64.deb`
+  - Linux AppImage: `src-tauri/target/release/bundle/appimage/librelinkup-desktop-unofficial_*_amd64.AppImage`
+  - macOS DMG: `src-tauri/target/release/bundle/dmg/LibreLinkup Desktop - Unofficial_*_x64.dmg`
+  - Raw executable: `src-tauri/target/release/librelinkup-desktop-unofficial.exe`
+
+## User Data Locations
+
+- **Settings**: `%LOCALAPPDATA%\com.sudipmandal.lldunofficial\settings.json`
+  - Stores: email, password, country, alwaysOnTop preference
+  - Format: Plain text JSON
 
 ## Debugging
 
 ### VS Code Launch Configurations
-- `Tauri Dev` - Start full app with debugger
-- `C# Backend Debug` - Debug C# backend separately
+- `Tauri Dev` - Start full app with debugger attached
 
 ### Console Logging
 - **Rust**: `println!("message");`
-- **C#**: `Console.WriteLine("message");`
 - **Vue**: `console.log("message");`
+- **Browser DevTools**: Press F12 in the app window
 
-### Check Backend Status
+### Check LibreLinkUp API Status
 ```powershell
-# Test if C# backend is running
-curl http://localhost:5000/health
+# Test API endpoint (replace with your country and token)
+curl https://api-us.libreview.io/llu/connections `
+  -H "Authorization: Bearer YOUR_TOKEN" `
+  -H "product: llu.android" `
+  -H "version: 4.16.0"
 ```
 
 ## Common Tasks
@@ -183,11 +187,6 @@ npm update
 # Rust crates
 cd src-tauri
 cargo update
-
-# NuGet packages
-cd src-csharp
-dotnet list package --outdated
-dotnet add package PackageName
 ```
 
 ### Clean Everything
@@ -196,9 +195,10 @@ dotnet add package PackageName
 cd src-tauri
 cargo clean
 
-# Clean C# build
-cd src-csharp
-dotnet clean
+# Clean npm packages
+npm run clean
+rm -rf node_modules
+npm install
 
 # Clean Node modules
 Remove-Item node_modules -Recurse -Force
