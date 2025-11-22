@@ -1,11 +1,12 @@
 # Cross-Platform Build Guide
 
-This guide explains how to build LibreLink Desktop for Windows and Linux platforms.
+This guide explains how to build LibreLink Desktop for Windows, Linux, and macOS platforms.
 
 ## Supported Platforms
 
 - **Windows**: MSI Installer, NSIS Installer
 - **Linux**: AppImage (universal), .deb package (Debian/Ubuntu)
+- **macOS**: DMG, .app bundle
 
 ## Prerequisites
 
@@ -16,6 +17,9 @@ This guide explains how to build LibreLink Desktop for Windows and Linux platfor
 ### Windows-Specific
 - Visual Studio 2022 Build Tools with C++ workload
 - Or Visual Studio 2022 Community/Professional
+
+### macOS-Specific
+- Xcode Command Line Tools (`xcode-select --install`)
 
 ### Linux-Specific (Debian/Ubuntu)
 Install required dependencies:
@@ -48,8 +52,9 @@ npm run tauri build
 ```
 
 **Output Files:**
-- MSI Installer: `src-tauri\target\release\bundle\msi\*.msi`
-- NSIS Installer: `src-tauri\target\release\bundle\nsis\*.exe`
+- MSI Installer: `src-tauri\target\release\bundle\msi\librelinkup-desktop-unofficial_*.msi`
+- NSIS Installer: `src-tauri\target\release\bundle\nsis\librelinkup-desktop-unofficial_*_x64-setup.exe`
+- Executable: `src-tauri\target\release\librelinkup-desktop-unofficial.exe`
 
 ### MSI vs NSIS
 - **MSI**: Native Windows installer format, better for enterprise deployment
@@ -69,8 +74,9 @@ npm run tauri build
 ```
 
 **Output Files:**
-- AppImage: `src-tauri/target/release/bundle/appimage/*.AppImage`
-- DEB Package: `src-tauri/target/release/bundle/deb/*.deb`
+- AppImage: `src-tauri/target/release/bundle/appimage/librelinkup-desktop-unofficial_*_amd64.AppImage`
+- DEB Package: `src-tauri/target/release/bundle/deb/librelinkup-desktop-unofficial_*_amd64.deb`
+- Executable: `src-tauri/target/release/librelinkup-desktop-unofficial`
 
 ### AppImage vs .deb
 - **AppImage**: Universal format, runs on any Linux distribution without installation
@@ -87,11 +93,6 @@ wsl --install -d Ubuntu
 
 2. Inside WSL, install prerequisites:
 ```bash
-# Install .NET SDK
-wget https://dot.net/v1/dotnet-install.sh
-chmod +x dotnet-install.sh
-./dotnet-install.sh --channel 9.0
-
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
@@ -113,7 +114,7 @@ npm run build:linux
 
 ### Building Windows Binaries on Linux (Not Recommended)
 
-Cross-compiling Windows binaries from Linux is complex due to .NET and Rust requirements. 
+Cross-compiling Windows binaries from Linux is complex due to Rust toolchain requirements. 
 **Recommended**: Use Windows for Windows builds, Linux for Linux builds, or use CI/CD.
 
 ## CI/CD Cross-Platform Builds
@@ -131,9 +132,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
       - run: npm install
       - run: npm run build:windows
       - uses: actions/upload-artifact@v4
@@ -147,9 +145,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
       - run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
@@ -159,6 +154,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux-packages
+          path: src-tauri/target/release/bundle/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm install
+      - run: npm run tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
           path: src-tauri/target/release/bundle/
 ```
 
@@ -171,7 +179,7 @@ Edit `src-tauri/tauri.conf.json`:
 ```json
 {
   "bundle": {
-    "targets": ["msi", "nsis", "deb", "appimage"],
+    "targets": ["msi", "nsis", "deb", "appimage", "dmg", "app"],
     "linux": {
       "deb": {
         "depends": []  // Add system dependencies here
@@ -202,39 +210,47 @@ npm run tauri build -- --bundles appimage
 
 ## Platform-Specific Code
 
-The C# backend automatically builds for the correct platform via the `build.rs` script:
+### Runtime Detection
 
-- Windows: `win-x64` runtime
-- Linux: `linux-x64` runtime
-- macOS: `osx-x64` runtime (if needed in future)
+Tauri automatically handles platform-specific builds:
+1. Detects the target platform during compilation
+2. Links appropriate system WebView libraries (WebView2 on Windows, WebKit2GTK on Linux, WKWebView on macOS)
+3. Sets executable permissions on Unix-based systems
+4. Packages the correct bundle format for each platform
 
-### Runtime Detection in Code
+### Architecture
 
-The Rust build script automatically:
-1. Detects the target platform
-2. Compiles C# backend with correct runtime identifier (RID)
-3. Sets executable permissions on Linux
-4. Packages the correct binary for each platform
+The application is frontend-only:
+- **Vue 3 + TypeScript** (Options API) for UI
+- **Tauri 2.x + Rust** for native desktop wrapper
+- **tauri-plugin-http** for LibreLinkUp API calls (bypasses CORS)
+- **tauri-plugin-store** for encrypted settings persistence
 
 ## Testing Builds
 
 ### Windows
 ```powershell
 # Install MSI
-msiexec /i src-tauri\target\release\bundle\msi\*.msi
+msiexec /i src-tauri\target\release\bundle\msi\librelinkup-desktop-unofficial_*.msi
 
 # Or run NSIS installer
-.\src-tauri\target\release\bundle\nsis\*.exe
+.\src-tauri\target\release\bundle\nsis\librelinkup-desktop-unofficial_*_x64-setup.exe
+
+# Or run executable directly (no installation)
+.\src-tauri\target\release\librelinkup-desktop-unofficial.exe
 ```
 
 ### Linux
 ```bash
 # Install .deb
-sudo dpkg -i src-tauri/target/release/bundle/deb/*.deb
+sudo dpkg -i src-tauri/target/release/bundle/deb/librelinkup-desktop-unofficial_*_amd64.deb
 
 # Or run AppImage directly
-chmod +x src-tauri/target/release/bundle/appimage/*.AppImage
-./src-tauri/target/release/bundle/appimage/*.AppImage
+chmod +x src-tauri/target/release/bundle/appimage/librelinkup-desktop-unofficial_*_amd64.AppImage
+./src-tauri/target/release/bundle/appimage/librelinkup-desktop-unofficial_*_amd64.AppImage
+
+# Or run executable directly (no installation)
+./src-tauri/target/release/librelinkup-desktop-unofficial
 ```
 
 ## Troubleshooting
@@ -249,13 +265,13 @@ chmod +x src-tauri/target/release/bundle/appimage/*.AppImage
 - Make it executable: `chmod +x *.AppImage`
 - Install FUSE: `sudo apt-get install libfuse2`
 
-### C# Backend Not Starting
-- Check `dotnet --version` shows 9.0.x
-- Rebuild C# manually: `cd src-csharp && dotnet build`
+### Build Fails with HTTP Errors
+- The app uses tauri-plugin-http for API calls
+- Ensure Rust dependencies are up to date: `cd src-tauri && cargo update`
 
-### Port 5000 Already in Use
-- Change in `src-csharp/Program.cs`
-- Update Vue components to use new port
+### Application Won't Start
+- Check WebView2 is installed on Windows (usually pre-installed on Windows 10/11)
+- On Linux, verify WebKit2GTK: `sudo apt-get install libwebkit2gtk-4.1-0`
 
 ## Distribution
 
@@ -270,26 +286,29 @@ chmod +x src-tauri/target/release/bundle/appimage/*.AppImage
 - Upload AppImage to GitHub Releases
 - Use Snapcraft or Flatpak (requires additional configuration)
 
+### macOS
+- Upload DMG to your website
+- Submit to Mac App Store (requires Apple Developer account and additional configuration)
+- Notarize the app for Gatekeeper
+
 ## File Sizes (Approximate)
 
-- Windows MSI: ~80-100 MB
-- Windows NSIS: ~75-95 MB
-- Linux .deb: ~75-95 MB
-- Linux AppImage: ~80-100 MB
+- Windows MSI: ~8-12 MB
+- Windows NSIS: ~8-12 MB
+- Linux .deb: ~10-15 MB
+- Linux AppImage: ~15-20 MB
+- macOS DMG: ~10-15 MB
 
 Sizes include:
-- Vue.js frontend (bundled)
+- Vue.js frontend (bundled and minified)
 - Tauri runtime (WebView wrapper)
-- C# backend (self-contained .NET runtime)
+- Rust binary
+
+Note: Actual runtime uses system WebView (WebView2/WebKit2GTK/WKWebView), keeping the bundle size small.
 
 ## Reducing Build Size
 
-1. **Enable trimming** in `src-csharp/TauriBackend.csproj`:
-```xml
-<PublishTrimmed>true</PublishTrimmed>
-```
-
-2. **Enable compression** in `src-tauri/tauri.conf.json`:
+1. **Enable compression** in `src-tauri/tauri.conf.json`:
 ```json
 {
   "bundle": {
@@ -300,7 +319,27 @@ Sizes include:
 }
 ```
 
-3. **Remove unused dependencies** from both frontend and backend
+2. **Optimize Vite build** in `vite.config.ts`:
+```typescript
+build: {
+  minify: 'terser',
+  terserOptions: {
+    compress: {
+      drop_console: true,
+    },
+  },
+}
+```
+
+3. **Remove unused dependencies** from `package.json`
+
+4. **Enable Rust optimization** in `src-tauri/Cargo.toml`:
+```toml
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+```
 
 ## Security Considerations
 

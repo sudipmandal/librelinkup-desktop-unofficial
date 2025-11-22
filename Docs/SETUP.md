@@ -1,4 +1,4 @@
-# Setup Guide - Tauri + Vue Frontend
+# Setup Guide - LibreLinkup Desktop Unofficial
 
 ## Quick Start
 
@@ -38,7 +38,7 @@ node --version
 npm --version
 ```
 
-#### 1.4 Install Visual Studio Build Tools (Windows)
+#### 1.3 Install Visual Studio Build Tools (Windows)
 For Rust compilation on Windows, you need the Visual Studio C++ build tools:
 
 ```powershell
@@ -65,31 +65,30 @@ The npm dependencies should already be installed, but if needed:
 npm install
 ```
 
-The C# dependencies are managed by NuGet and will be restored automatically.
-
-### Step 3: Run Development Server
+### Step 4: Run Development Server
 
 ```powershell
 npm run tauri dev
 ```
 
 This will:
-1. ✅ Start Vite dev server (Vue frontend)
+1. ✅ Start Vite dev server (Vue frontend on port 1420)
 2. ✅ Build Rust/Tauri wrapper
 3. ✅ Launch the desktop app with borderless window
 
-### Step 4: Verify Everything Works
+### Step 5: Verify Everything Works
 
 When the app launches, you should see:
 - A custom borderless window titled "LibreLinkup Desktop - Unofficial"
 - Login form with country dropdown, email, and password fields
 - Always on Top checkbox
-- After login: CGM data display with glucose readings and trend arrows
+- After login: Compact CGM data display (249×58px) with:
+  - Glucose reading with color-coded background
+  - Trend arrow (↑↑, ↑, →, ↓, ↓↓)
+  - Last updated timestamp
+  - Gear icon (⚙) for logout
 
-Try:
-1. Enter your name and click "Greet from Rust" - tests Tauri/Rust backend
-2. Enter your name and click "Greet from C#" - tests C# backend via TauriDotNetBridge
-3. Enter name and age, click "Get Person Info" - tests complex data from C#
+Try logging in with your LibreLinkUp credentials to see live CGM data.
 
 ## Architecture Overview
 
@@ -100,53 +99,64 @@ Try:
 │  │         Vue.js Frontend (Port 1420)               │  │
 │  │  - TypeScript + Options API                       │  │
 │  │  - Vite dev server                                │  │
-│  │  - Makes HTTP calls to C# backend                 │  │
+│  │  - LibreLinkUp API integration                    │  │
 │  └───────────────────────────────────────────────────┘  │
 │                          ↓                              │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │        Tauri/Rust Core                            │  │
-│  │  - Manages window                                 │  │
-│  │  - Spawns C# sidecar process                      │  │
-│  │  - Rust commands available via invoke()           │  │
+│  │  - Manages window (borderless custom titlebar)    │  │
+│  │  - Window resize (compact/full modes)             │  │
+│  │  - Plugins: HTTP, Store, Opener                   │  │
 │  └───────────────────────────────────────────────────┘  │
 │                          ↓                              │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │   C# Backend Sidecar (Port 5000)                  │  │
-│  │  - TauriDotNetBridge                              │  │
-│  │  - ASP.NET Core web server                        │  │
-│  │  - Exposes commands via HTTP API                  │  │
+│  │      External APIs & Storage                      │  │
+│  │  - LibreLinkUp API (via tauri-plugin-http)        │  │
+│  │  - Local settings (via tauri-plugin-store)        │  │
 │  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ## How Communication Works
 
-### Calling Rust from Vue (Options API):
+### Calling LibreLinkUp API:
 ```typescript
-// In your component methods
-import { invoke } from "@tauri-apps/api/core";
+// Using Tauri's fetch to bypass CORS
+import { fetch } from '@tauri-apps/plugin-http'
 
 methods: {
-  async callRust() {
-    const result = await invoke("greet", { name: "World" });
-    this.message = result;
+  async fetchCGMData() {
+    const response = await fetch(
+      `https://api-${country}.libreview.io/llu/connections`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'product': 'llu.android',
+          'version': '4.16.0'
+        }
+      }
+    );
+    const data = await response.json();
+    // Process CGM data
   }
 }
 ```
 
-### Calling C# from Vue (Options API):
+### Using Store for Persistence:
 ```typescript
-// In your component methods
-methods: {
-  async callCSharp() {
-    const response = await fetch("http://localhost:5000/api/invoke/Greet", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "World" })
-    });
-    const result = await response.json();
-    this.message = result;
+// Save and load settings
+import { Store } from '@tauri-apps/plugin-store'
+
+data() {
+  return {
+    store: null
   }
+},
+async mounted() {
+  this.store = new Store('settings.json');
+  await this.store.set('email', 'user@example.com');
+  const email = await this.store.get('email');
 }
 ```
 
@@ -155,26 +165,20 @@ methods: {
 ### Hot Reload
 - Vue components: ✅ Auto-reload on save
 - Rust code: ❌ Requires restart (`npm run tauri dev`)
-- C# code: ❌ Requires restart
+- TypeScript files: ✅ Auto-reload on save
 
-### Debugging C# Backend
+### Debugging
 
-1. Build the C# project separately:
-```powershell
-cd src-csharp
-dotnet build
-```
-
-2. Run it standalone:
-```powershell
-dotnet run
-```
+1. Check console logs in the dev tools (F12)
+2. Check LibreLinkUp API responses in Network tab
+3. Rust console output shows in terminal
+4. Store data is in `AppData\Local\com.sudipmandal.lldunofficial\settings.json`
 
 3. Or use VS Code debugging with the provided launch configuration
 
 ### Debugging Rust Code
 
-Add print statements:
+Add console.log statements in Vue or println! in Rust:
 ```rust
 println!("Debug message: {:?}", variable);
 ```
@@ -191,53 +195,52 @@ npm run tauri build
 Output location: `src-tauri/target/release/bundle/`
 
 The installer will include:
-- Vue.js frontend (bundled)
+- Vue.js frontend (bundled and optimized)
 - Tauri/Rust wrapper
-- C# backend (self-contained executable)
+- All required plugins (HTTP, Store, Opener)
 
 ## Common Issues
 
 ### Issue: Rust not found
 **Solution**: Restart your terminal/VS Code after installing Rust
 
-### Issue: C# backend won't compile
+### Issue: LibreLinkUp login fails
 **Solution**: 
-```powershell
-cd src-csharp
-dotnet restore
-dotnet build
-```
+- Verify your credentials are correct
+- Check internet connection
+- Ensure you have an active LibreLinkUp account with connections
 
-### Issue: Port 5000 already in use
-**Solution**: Change the port in both:
-- `src-csharp/Program.cs` (UseUrls)
-- `src/App.vue` (fetch URLs)
+### Issue: CORS errors when calling API
+**Solution**: Make sure you're using Tauri's fetch from `@tauri-apps/plugin-http`, not browser fetch
 
 ### Issue: Build fails with MSBUILD error
 **Solution**: Install Visual Studio Build Tools with C++ workload
 
 ## Next Steps
 
-1. **Add more C# services**: Create new interfaces and implementations in `src-csharp/`
-2. **Create new Vue components**: Use `src/components/ExampleComponent.vue` as an Options API template
-3. **Style the frontend**: Modify `src/App.vue` and add CSS
+1. **Customize colors**: Modify glucose thresholds in `glucoseBackgroundColor()` method
+2. **Add features**: Historical graphs, multiple patient support, data export
+3. **Style the UI**: Modify `src/App.vue` and add custom CSS
 4. **Add Tauri plugins**: Check https://tauri.app/plugin/
 5. **Package for distribution**: Run `npm run tauri build`
 
 ## Cross-Platform Builds
 
-This application supports Windows and Linux. To build for different platforms:
+This application supports Windows, Linux, and macOS. Build outputs:
 
-- **Windows**: `npm run build:windows` (creates MSI and NSIS installers)
-- **Linux**: `npm run build:linux` (creates .deb and AppImage)
+- **Windows**: MSI and NSIS installers
+- **Linux**: .deb packages and AppImage
+- **macOS**: DMG and .app bundles
 
 For detailed cross-platform build instructions, see **`BUILD-GUIDE.md`**
 
 ## Resources
 
 - [Tauri Documentation](https://tauri.app/)
-- [TauriDotNetBridge GitHub](https://github.com/FelixKahle/TauriDotNetBridge)
+- [LibreLinkUp API (unofficial)](https://github.com/DiaKEM/libre-link-up-api-client)
 - [Vue.js Options API Guide](https://vuejs.org/guide/introduction.html#options-api)
+- [Tauri HTTP Plugin](https://v2.tauri.app/plugin/http-client/)
+- [Tauri Store Plugin](https://v2.tauri.app/plugin/store/)
 - [Vue.js TypeScript Guide](https://vuejs.org/guide/typescript/overview.html)
 - [.NET Documentation](https://docs.microsoft.com/dotnet/)
 - [Cross-Platform Build Guide](./BUILD-GUIDE.md)

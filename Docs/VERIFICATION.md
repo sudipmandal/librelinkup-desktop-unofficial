@@ -1,6 +1,6 @@
 # Project Setup Verification Checklist
 
-Use this checklist to verify your Tauri + Vue + C# project is set up correctly.
+Use this checklist to verify your Tauri + Vue project is set up correctly.
 
 ## ✅ File Structure
 
@@ -83,16 +83,6 @@ Should show:
 - typescript (dev)
 - vue-tsc (dev)
 
-## ✅ Rust Dependencies
-```powershell
-cd src-csharp
-dotnet list package
-```
-
-Should show:
-- TauriDotNetBridge (v2.2.0)
-- Microsoft.Extensions.DependencyInjection (v8.0.1)
-
 ## ✅ Rust Crates
 ```powershell
 cd src-tauri
@@ -102,62 +92,55 @@ cargo tree --depth 1
 Should include:
 - tauri
 - tauri-plugin-opener
-- tauri-plugin-shell
+- tauri-plugin-store
+- tauri-plugin-http
 - serde
 - serde_json
 
 ## 🧪 Test the Setup
 
-### Test 1: Build C# Backend Standalone
-```powershell
-cd src-csharp
-dotnet build
-```
-✅ Should build without errors
-
-### Test 2: Build Rust Project
+### Test 1: Build Rust Project
 ```powershell
 cd src-tauri
 cargo build
 ```
-✅ Should compile C# backend and Rust project
-✅ Should create `binaries/tauri-backend.exe` (or `tauri-backend` on Linux/Mac)
+✅ Should compile without errors
 
-### Test 3: Run Development Server
+### Test 2: Run Development Server
 ```powershell
 cd c:\sources\LibreLinkupDesktop-TauriApp
 npm run tauri dev
 ```
-✅ Should open a desktop window
-✅ Should show "C# Backend Status: Connected ✓"
-✅ Should be able to click buttons and see responses
+✅ Should open a desktop window with borderless custom titlebar
+✅ Should show login form with country dropdown, email, and password fields
+✅ Should be able to login and see CGM data display
 
-### Test 4: Test Rust Backend
+### Test 3: Test LibreLinkUp Integration
 In the app window:
-1. Enter your name
-2. Click "Greet from Rust"
-✅ Should show: "Hello, [name]! You've been greeted from Rust!"
+1. Select your country from dropdown
+2. Enter your LibreLinkUp email and password
+3. Click "Login"
+✅ Should resize to compact mode (249×58px)
+✅ Should display current glucose reading
+✅ Should show trend arrow and timestamp
+✅ Should show color-coded background (green/orange/red)
+✅ Should auto-refresh every 30 seconds
 
-### Test 5: Test C# Backend
-In the app window:
-1. Enter your name
-2. Click "Greet from C#"
-✅ Should show: "Hello, [name]! Greetings from C# backend via TauriDotNetBridge!"
-
-### Test 6: Test Complex Data
-In the app window:
-1. Enter name and age
-2. Click "Get Person Info"
-✅ Should show JSON with name, age, and message
+### Test 4: Test Window Controls
+In the compact mode:
+1. Click the gear icon (⚙) to logout
+✅ Should resize back to full window (800×600px)
+✅ Should show login form again
+✅ Window minimize/maximize/close buttons should work
 
 ## 🔧 Troubleshooting
 
 If any test fails, check:
 
 1. **Rust not found**: Restart terminal after installing Rust
-2. **C# build fails**: Run `dotnet restore` in src-csharp folder
-3. **Port 5000 in use**: Change port in Program.cs and App.vue
-4. **Backend not connecting**: Check if C# backend is running (look for console output)
+2. **Login fails**: Verify LibreLinkUp credentials are correct
+3. **CORS errors**: Ensure tauri-plugin-http is properly configured
+4. **Window resize fails**: Check capabilities/default.json has window resize permissions
 5. **Build errors**: Check SETUP.md for prerequisite installation steps
 
 ## 📦 Ready for Production Build?
@@ -184,8 +167,10 @@ Your setup is complete when:
 - [x] All files are in correct locations
 - [x] All dependencies are installed
 - [x] `npm run tauri dev` launches successfully
-- [x] C# Backend Status shows "Connected ✓"
-- [x] All three test sections work correctly
+- [x] Login form displays correctly
+- [x] LibreLinkUp login works and shows CGM data
+- [x] Window resizing works (compact/full modes)
+- [x] Auto-refresh works every 30 seconds
 - [x] No errors in console
 
 ## Next Steps
@@ -193,9 +178,9 @@ Your setup is complete when:
 Once everything is verified:
 1. Read `README.md` for architecture overview
 2. Check `QUICK-REFERENCE.md` for common commands
-3. Start customizing the C# backend services
-4. Modify the Vue frontend to match your needs
-5. Add your application logic!
+3. Modify the Vue frontend to add features
+4. Customize glucose thresholds and colors
+5. Add additional CGM data visualizations!
 
 ---
 
@@ -203,13 +188,15 @@ Once everything is verified:
 
 **Stack**:
 - Frontend: Vue 3 + TypeScript + Vite (Options API)
-- Desktop: Tauri 2.0 + Rust
-- Backend: C# .NET 9.0 + TauriDotNetBridge 2.2.0
+- Desktop: Tauri 2.x + Rust
+- API Integration: LibreLinkUp API via tauri-plugin-http
+- Storage: tauri-plugin-store (plain text JSON)
 
 **Platforms**:
 - Windows: MSI, NSIS installers
 - Linux: .deb packages, AppImage
+- macOS: DMG, .app bundles
 
 **Communication Flow**:
-Vue (Options API) → HTTP → C# Backend (via TauriDotNetBridge)
-Vue (Options API) → invoke() → Rust Backend (via Tauri)
+Vue (Options API) → Tauri HTTP Plugin → LibreLinkUp API
+Vue (Options API) → Tauri Store Plugin → settings.json
