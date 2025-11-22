@@ -1,5 +1,12 @@
 # LibreLinkUp Desktop - Unofficial
 
+[![GitHub Release](https://img.shields.io/github/v/release/sudipmandal/librelinkup-desktop-unofficial?style=flat-square)](https://github.com/sudipmandal/librelinkup-desktop-unofficial/releases)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/sudipmandal/librelinkup-desktop-unofficial/release.yml?style=flat-square&label=build)](https://github.com/sudipmandal/librelinkup-desktop-unofficial/actions)
+[![License](https://img.shields.io/github/license/sudipmandal/librelinkup-desktop-unofficial?style=flat-square)](LICENSE)
+[![GitHub Downloads](https://img.shields.io/github/downloads/sudipmandal/librelinkup-desktop-unofficial/total?style=flat-square)](https://github.com/sudipmandal/librelinkup-desktop-unofficial/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/sudipmandal/librelinkup-desktop-unofficial?style=flat-square)](https://github.com/sudipmandal/librelinkup-desktop-unofficial/stargazers)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat-square)](https://github.com/sudipmandal/librelinkup-desktop-unofficial/issues)
+
 > ⚠️ **Disclaimer**: This is an unofficial, community-developed desktop application and is not affiliated with, endorsed by, or connected to Abbott Laboratories or LibreLink/LibreLinkUp. Use at your own risk.
 
 A lightweight, cross-platform desktop application for monitoring your LibreLinkUp CGM (Continuous Glucose Monitor) data. Built with modern web technologies, this app provides a compact, always-accessible widget displaying real-time glucose readings on your desktop.
