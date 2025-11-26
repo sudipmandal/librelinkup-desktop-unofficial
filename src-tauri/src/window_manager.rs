@@ -23,26 +23,6 @@ fn is_kde_plasma() -> bool {
 }
 
 #[cfg(target_os = "linux")]
-fn get_x11_window_id<R: Runtime>(window: &WebviewWindow<R>) -> Option<u64> {
-    // Try to get the native window handle
-    use tauri::window::WindowExt;
-    
-    // Get the raw window handle
-    if let Ok(handle) = window.gtk_window() {
-        // Use GDK to get X11 window ID
-        unsafe {
-            use std::os::raw::c_void;
-            
-            // This is a workaround - we'll use xdotool to find the window
-            // by title as a more reliable cross-platform approach
-            return None;
-        }
-    }
-    
-    None
-}
-
-#[cfg(target_os = "linux")]
 fn set_kde_always_on_top_x11(window_title: &str, enable: bool) -> Result<(), String> {
     // Use wmctrl to set the window state on KDE
     // wmctrl uses EWMH (Extended Window Manager Hints) which KDE respects
