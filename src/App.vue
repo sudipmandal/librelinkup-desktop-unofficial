@@ -185,8 +185,8 @@ export default defineComponent({
     },
     getTrendArrow(trend: number): string {
       const arrows: Record<number, string> = {
-        1: '↓',   // Falling
-        2: '↓↓',  // Falling quickly
+        1: '↓↓',   // Falling quickly
+        2: '↓',  // Falling
         3: '→',   // Steady
         4: '↑',  // Rising
         5: '↑↑',   // Rising quickly
