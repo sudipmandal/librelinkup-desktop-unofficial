@@ -1,6 +1,7 @@
 <script lang="ts">
 import { defineComponent, markRaw } from "vue";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import { getAuthToken, getCGMData } from "./lib/linkup";
 
 export default defineComponent({
@@ -49,6 +50,15 @@ export default defineComponent({
     },
     async closeWindow() {
       await getCurrentWindow().close();
+    },
+    async resizeWindow(width: number, height: number) {
+      const window = getCurrentWindow();
+      try {
+        await window.setResizable(true);
+        await window.setSize(new LogicalSize(width, height));
+      } catch (error) {
+        console.error("Failed to resize window:", error);
+      }
     },
     async handleLogin() {
       console.log("Login attempt:", {
@@ -133,9 +143,7 @@ export default defineComponent({
         this.isLoggedIn = true;
         
         // Resize window to compact size
-        const window = getCurrentWindow();
-        await window.setResizable(true);
-        await window.setSize(new LogicalSize(249, 58));
+        await this.resizeWindow(200, 48);
         
         // Set up auto-refresh every 30 seconds
         if (!this.refreshInterval) {
@@ -165,13 +173,7 @@ export default defineComponent({
       this.cgmData = null;
       
       // Resize window back to login form size
-      const window = getCurrentWindow();
-      try {
-        await window.setResizable(true);
-        await window.setSize(new LogicalSize(800, 600));
-      } catch (error) {
-        console.error("Failed to resize window:", error);
-      }
+      await this.resizeWindow(800, 600);
       
       // Set up auto-retry every 10 seconds
       if (!this.retryInterval) {
@@ -197,13 +199,7 @@ export default defineComponent({
       }
       
       // Resize window back to original size first, before changing state
-      const window = getCurrentWindow();
-      try {
-        await window.setResizable(true);
-        await window.setSize(new LogicalSize(800, 600));
-      } catch (error) {
-        console.error("Failed to resize window:", error);
-      }
+      await this.resizeWindow(800, 600);
       
       // Then update state
       this.isLoggedIn = false;
@@ -292,6 +288,18 @@ export default defineComponent({
       try {
         const window = getCurrentWindow();
         console.log("Setting always on top to:", this.alwaysOnTop);
+        
+        // Try KDE-specific implementation first (only on Linux KDE)
+        try {
+          const result = await invoke<string>('kde_set_always_on_top', { 
+            enable: this.alwaysOnTop 
+          });
+          console.log("KDE always-on-top result:", result);
+        } catch (kdeError) {
+          console.log("KDE-specific method not available or failed:", kdeError);
+        }
+        
+        // Always use Tauri's built-in method as well (fallback and for other platforms)
         await window.setAlwaysOnTop(this.alwaysOnTop);
         
         // Clear existing interval
@@ -331,6 +339,14 @@ export default defineComponent({
     }
   },
   async mounted() {
+    // Log desktop environment info for debugging
+    try {
+      const desktopInfo = await invoke<string>('get_desktop_environment');
+      console.log("Desktop environment:", desktopInfo);
+    } catch (error) {
+      console.log("Could not get desktop environment info:", error);
+    }
+    
     // Initialize store
     try {
       console.log("Initializing store...");
@@ -556,7 +572,7 @@ body {
   background: transparent;
   -webkit-app-region: no-drag;
   color: #666;
-  border-radius: 6px;
+  /* border-radius: 6px; */
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -588,7 +604,7 @@ body {
   margin: 0 auto;
   padding: 30px;
   background: white;
-  border-radius: 12px;
+  /* border-radius: 12px; */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -641,7 +657,7 @@ body {
   padding: 12px 16px;
   font-size: 14px;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  /* border-radius: 8px; */
   background: #fff;
   color: #333;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -776,7 +792,7 @@ body {
 .cgm-container {
   padding: 20px;
   background: white;
-  border-radius: 12px;
+  /* border-radius: 12px; */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
@@ -833,8 +849,8 @@ body {
 
 .glucose-display {
   color: white;
-  padding: 5px;
-  border-radius: 12px;
+  padding: 0;
+ 
   margin-bottom: 0px;
   transition: background 0.3s ease;
   display: flex;
@@ -845,16 +861,16 @@ body {
 }
 
 .glucose-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: bold;
   line-height: 1;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
 }
 
 .glucose-unit {
-  font-size: 18px;
+  font-size: 12px;
   font-weight: normal;
   opacity: 0.9;
   display: inline-flex;
@@ -862,16 +878,16 @@ body {
 }
 
 .glucose-trend {
-  font-size: 28px;
+  font-size: 24px;
   display: inline-flex;
   align-items: center;
 }
 
 .glucose-time {
-  font-size: 12px;
+  font-size: 9px;
   opacity: 0.7;
   position: absolute;
-  top: 2px;
+  top: 0px;
   left: 10px;
 }
 

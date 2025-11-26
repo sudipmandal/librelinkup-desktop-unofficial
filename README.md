@@ -43,6 +43,7 @@ The easiest way to get started is to download the pre-built application from the
 - Or `librelinkup-desktop-unofficial_*_amd64.AppImage` (Universal)
 - For .deb: `sudo dpkg -i librelinkup-desktop-unofficial_*_amd64.deb`
 - For AppImage: `chmod +x *.AppImage && ./librelinkup-desktop-unofficial_*.AppImage`
+- **KDE Plasma users**: For enhanced always-on-top support, install wmctrl: `sudo apt install wmctrl` (Debian/Ubuntu) or `sudo dnf install wmctrl` (Fedora)
 
 **macOS:**
 - Download `LibreLinkup Desktop - Unofficial_*_x64.dmg`
