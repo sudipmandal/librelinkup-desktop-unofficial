@@ -13,11 +13,13 @@ export default defineComponent({
       alwaysOnTop: false,
       alwaysOnTopInterval: null as number | null,
       refreshInterval: null as number | null,
+      retryInterval: null as number | null,
       store: null as any,
       storeReady: false,
       isLoading: false,
       isLoggedIn: false,
-      cgmData: null as any
+      cgmData: null as any,
+      errorMessage: ""
     };
   },
   computed: {
@@ -55,6 +57,13 @@ export default defineComponent({
         password: "***"
       });
       
+      // Clear any existing error message and retry interval
+      this.errorMessage = "";
+      if (this.retryInterval) {
+        clearInterval(this.retryInterval);
+        this.retryInterval = null;
+      }
+      
       // Save form values first
       await this.saveFormValues();
       
@@ -70,9 +79,8 @@ export default defineComponent({
         
         if (!result || 'error' in result) {
           console.error("Login failed:", result);
-          // Reset to login form on error
-          this.isLoggedIn = false;
-          this.cgmData = null;
+          const errorMsg = (result as any)?.error || "Login failed. Please check your credentials.";
+          await this.handleError(errorMsg);
           return;
         }
         
@@ -89,9 +97,8 @@ export default defineComponent({
         
       } catch (error) {
         console.error("Login error:", error);
-        // Reset to login form on error
-        this.isLoggedIn = false;
-        this.cgmData = null;
+        const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred during login.";
+        await this.handleError(errorMsg);
       } finally {
         this.isLoading = false;
       }
@@ -116,8 +123,8 @@ export default defineComponent({
         
         if (!data || (typeof data === 'object' && 'error' in data)) {
           console.error("Failed to fetch CGM data:", data);
-          // Reset to login form on error
-          await this.handleError();
+          const errorMsg = (data as any)?.error || "Failed to fetch CGM data. Retrying...";
+          await this.handleError(errorMsg);
           return;
         }
         
@@ -139,11 +146,14 @@ export default defineComponent({
         
       } catch (error) {
         console.error("Error fetching CGM data:", error);
-        // Reset to login form on error
-        await this.handleError();
+        const errorMsg = error instanceof Error ? error.message : "Failed to fetch CGM data. Retrying...";
+        await this.handleError(errorMsg);
       }
     },
-    async handleError() {
+    async handleError(errorMessage: string = "An error occurred. Retrying...") {
+      // Set error message
+      this.errorMessage = errorMessage;
+      
       // Clear auto-refresh interval
       if (this.refreshInterval) {
         clearInterval(this.refreshInterval);
@@ -162,8 +172,24 @@ export default defineComponent({
       } catch (error) {
         console.error("Failed to resize window:", error);
       }
+      
+      // Set up auto-retry every 10 seconds
+      if (!this.retryInterval) {
+        console.log("Setting up auto-retry every 10 seconds...");
+        this.retryInterval = setInterval(() => {
+          console.log("Auto-retrying login...");
+          this.handleLogin();
+        }, 10000);
+      }
     },
     async logout() {
+      // Clear error message and retry interval
+      this.errorMessage = "";
+      if (this.retryInterval) {
+        clearInterval(this.retryInterval);
+        this.retryInterval = null;
+      }
+      
       // Clear auto-refresh interval
       if (this.refreshInterval) {
         clearInterval(this.refreshInterval);
@@ -338,6 +364,9 @@ export default defineComponent({
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
     }
+    if (this.retryInterval) {
+      clearInterval(this.retryInterval);
+    }
     
     // Clean up focus listener
     if ((this as any)._unlistenFocus) {
@@ -428,6 +457,10 @@ export default defineComponent({
           <button @click="handleLogin" class="btn-login" :disabled="isLoginDisabled || isLoading">
             {{ isLoading ? 'Logging in...' : 'Login' }}
           </button>
+        </div>
+        
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
         </div>
       </div>
 
@@ -885,5 +918,29 @@ body {
 .btn-refresh:disabled:hover {
   transform: none;
   box-shadow: none;
+}
+
+.error-message {
+  text-align: center;
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  color: #856404;
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-message {
+    background: #3a2f1f;
+    border-color: #ffc107;
+    color: #ffd966;
+  }
 }
 </style>
