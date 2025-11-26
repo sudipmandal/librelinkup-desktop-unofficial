@@ -58,7 +58,8 @@ fn set_kde_always_on_top_x11(window_title: &str, enable: bool) -> Result<(), Str
         return Err("wmctrl not found. Please install it: sudo apt install wmctrl".to_string());
     }
     
-    let window_list = String::from_utf8_lossy(&output.unwrap().stdout);
+    let output = output.unwrap();
+    let window_list = String::from_utf8_lossy(&output.stdout);
     let mut window_id: Option<String> = None;
     
     for line in window_list.lines() {
