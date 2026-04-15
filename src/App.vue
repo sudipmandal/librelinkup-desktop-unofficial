@@ -22,7 +22,8 @@ export default defineComponent({
       cgmData: null as any,
       errorMessage: "",
       isLinux: false,
-      showToolbar: false
+      showToolbar: false,
+      debugLog: [] as string[]
     };
   },
   computed: {
@@ -44,6 +45,12 @@ export default defineComponent({
   },
 
   methods: {
+    addLog(msg: string) {
+      const ts = new Date().toLocaleTimeString();
+      this.debugLog.push(`[${ts}] ${msg}`);
+      // keep last 200 lines
+      if (this.debugLog.length > 200) this.debugLog.splice(0, this.debugLog.length - 200);
+    },
     async minimizeWindow() {
       await getCurrentWindow().minimize();
     },
@@ -63,11 +70,7 @@ export default defineComponent({
       }
     },
     async handleLogin() {
-      console.log("Login attempt:", {
-        country: this.country,
-        email: this.email,
-        password: "***"
-      });
+      this.addLog(`Login attempt: country=${this.country}, email=${this.email}`);
       
       // Clear any existing error message and retry interval
       this.errorMessage = "";
@@ -77,39 +80,55 @@ export default defineComponent({
       }
       
       // Save form values first
+      this.addLog('Saving form values...');
       await this.saveFormValues();
+      
+      // Login timeout (30 seconds)
+      const LOGIN_TIMEOUT = 30000;
+      let timeoutId: number | null = null;
       
       try {
         this.isLoading = true;
         
-        // Call LibreLinkUp API directly using axios
-        const result = await getAuthToken({
-          country: this.country,
-          username: this.email,
-          password: this.password
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('Login timed out after 30 seconds')), LOGIN_TIMEOUT) as unknown as number;
         });
         
+        this.addLog('Calling getAuthToken...');
+        const result = await Promise.race([
+          getAuthToken({
+            country: this.country,
+            username: this.email,
+            password: this.password
+          }),
+          timeoutPromise
+        ]);
+        
+        if (timeoutId) clearTimeout(timeoutId);
+        
         if (!result || 'error' in result) {
-          console.error("Login failed:", result);
+          this.addLog(`Login failed: ${JSON.stringify(result)}`);
           const errorMsg = (result as any)?.error || "Login failed. Please check your credentials.";
           await this.handleError(errorMsg);
           return;
         }
         
-        console.log("Login successful:", result);
+        this.addLog(`Login successful, country=${result.accountCountry}`);
         
         // Store the token and account info
         await this.store.set("token", result.token);
         await this.store.set("accountId", result.accountId);
         await this.store.set("accountCountry", result.accountCountry);
         await this.store.save();
+        this.addLog('Token stored, fetching CGM data...');
         
         // Fetch CGM data
         await this.fetchCGMData();
         
       } catch (error) {
-        console.error("Login error:", error);
+        if (timeoutId) clearTimeout(timeoutId);
         const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred during login.";
+        this.addLog(`Login error: ${errorMsg}`);
         await this.handleError(errorMsg);
       } finally {
         this.isLoading = false;
@@ -122,9 +141,10 @@ export default defineComponent({
         const accountCountry = await this.store.get("accountCountry");
         
         if (!token || !accountId) {
-          console.error("Missing token or account ID");
+          this.addLog('Missing token or account ID');
           return;
         }
+        this.addLog(`Fetching CGM data for country=${accountCountry}...`);
         
         // Call LibreLinkUp API directly using axios
         const data = await getCGMData({
@@ -134,13 +154,13 @@ export default defineComponent({
         });
         
         if (!data || (typeof data === 'object' && 'error' in data)) {
-          console.error("Failed to fetch CGM data:", data);
+          this.addLog(`Failed to fetch CGM data: ${JSON.stringify(data)}`);
           const errorMsg = (data as any)?.error || "Failed to fetch CGM data. Retrying...";
           await this.handleError(errorMsg);
           return;
         }
         
-        console.log("CGM data:", data);
+        this.addLog('CGM data received successfully');
         this.cgmData = data;
         this.isLoggedIn = true;
         
@@ -155,12 +175,13 @@ export default defineComponent({
         }
         
       } catch (error) {
-        console.error("Error fetching CGM data:", error);
         const errorMsg = error instanceof Error ? error.message : "Failed to fetch CGM data. Retrying...";
+        this.addLog(`CGM data error: ${errorMsg}`);
         await this.handleError(errorMsg);
       }
     },
     async handleError(errorMessage: string = "An error occurred. Retrying...") {
+      this.addLog(`Error: ${errorMessage}`);
       // Set error message
       this.errorMessage = errorMessage;
       
@@ -348,30 +369,42 @@ export default defineComponent({
       }
     }
   },
+  watch: {
+    debugLog: {
+      handler() {
+        this.$nextTick(() => {
+          const el = this.$refs.debugLogArea as HTMLTextAreaElement;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      },
+      deep: true
+    }
+  },
   async mounted() {
     // Detect if running on Linux
     this.isLinux = navigator.platform.toLowerCase().includes('linux');
+    this.addLog(`Platform: ${navigator.platform}, isLinux: ${this.isLinux}`);
     
     // Log desktop environment info for debugging
     try {
       const desktopInfo = await invoke<string>('get_desktop_environment');
-      console.log("Desktop environment:", desktopInfo);
+      this.addLog(`Desktop: ${desktopInfo}`);
     } catch (error) {
-      console.log("Could not get desktop environment info:", error);
+      this.addLog(`Desktop env detection failed: ${error}`);
     }
     
     // Initialize store
     try {
-      console.log("Initializing store...");
+      this.addLog('Initializing store...');
       const { Store } = await import("@tauri-apps/plugin-store");
       const storeInstance = await Store.load("settings.json");
       // Use markRaw to prevent Vue from making the store reactive
       // This prevents "Cannot read private member" errors
       this.store = markRaw(storeInstance);
-      console.log("Store initialized, loading values...");
+      this.addLog('Store initialized, loading values...');
       await this.loadFormValues();
     } catch (error) {
-      console.error("Failed to initialize store:", error);
+      this.addLog(`Store init failed: ${error}`);
       this.storeReady = true; // Allow saving even if initialization failed
     }
     
@@ -493,6 +526,11 @@ export default defineComponent({
         
         <div v-if="errorMessage" class="error-message">
           {{ errorMessage }}
+        </div>
+        
+        <div v-if="debugLog.length" class="debug-log-container">
+          <label>Log</label>
+          <textarea class="debug-log" readonly :value="debugLog.join('\n')" ref="debugLogArea"></textarea>
         </div>
       </div>
 
@@ -992,11 +1030,47 @@ body {
   box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
 }
 
+.debug-log-container {
+  max-width: 800px;
+  margin: 15px auto 0;
+}
+
+.debug-log-container label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.debug-log {
+  width: 100%;
+  height: 120px;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  resize: vertical;
+  white-space: pre;
+  overflow-y: auto;
+}
+
 @media (prefers-color-scheme: dark) {
   .error-message {
     background: #3a2f1f;
     border-color: #ffc107;
     color: #ffd966;
+  }
+
+  .debug-log-container label {
+    color: #aaa;
+  }
+
+  .debug-log {
+    border-color: #444;
   }
 }
 </style>
