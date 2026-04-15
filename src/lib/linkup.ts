@@ -3,6 +3,14 @@ import { hash256Async } from './utils'
 
 const BASE_URL = 'https://api-COUNTRY_CODE.libreview.io/llu'
 
+// Workaround for webkit2gtk (Linux): response.json() can hang because
+// the ReadableStream gets locked. Using response.text() + JSON.parse()
+// avoids this issue.
+async function parseJson(response: Response): Promise<any> {
+  const text = await response.text();
+  return JSON.parse(text);
+}
+
 const getBaseUrl = (countryCode: string): string => {
   if(countryCode === 'global') {
     return BASE_URL.replace('-COUNTRY_CODE', '')
@@ -47,7 +55,7 @@ export async function getAuthToken(request: LoginAttemptRequest): Promise<{
     });
 
     console.log('Response Status:', response.status);
-    let responseData = await response.json();
+    let responseData = await parseJson(response);
     console.log('Response Data:', responseData);
 
     if (responseData?.status === 0 ) {
@@ -90,7 +98,7 @@ export async function getAuthToken(request: LoginAttemptRequest): Promise<{
         }),
       });
       
-      responseData = await response.json();
+      responseData = await parseJson(response);
       console.log('Retry Response:', responseData);
     }
     else{
@@ -142,7 +150,7 @@ export async function getCGMData(request: GetGeneralRequest): Promise<any|null|{
       headers,
     })
 
-    const connData = await connResponse.json();
+    const connData = await parseJson(connResponse);
     console.log('Connections response:', connData);
 
     const patientId = connData?.data?.[0]?.patientId
@@ -161,7 +169,7 @@ export async function getCGMData(request: GetGeneralRequest): Promise<any|null|{
       headers,
     })
 
-    const graphData = await graphResponse.json();
+    const graphData = await parseJson(graphResponse);
     console.log('✅ Graph data received');
     return graphData?.data?.connection
   } catch (error: any) {
@@ -193,7 +201,7 @@ export async function getConnection(request: GetGeneralRequest): Promise<any|nul
       headers,
     })
 
-    const data = await response.json();
+    const data = await parseJson(response);
     return data?.data?.[0]
   } catch (error: any) {
     console.log('Unable to getConnection:', error.message)
