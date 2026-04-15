@@ -8,6 +8,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             window_manager::kde_set_always_on_top,
+            window_manager::gnome_set_always_on_top,
             window_manager::get_desktop_environment
         ])
         .run(tauri::generate_context!())

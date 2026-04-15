@@ -20,7 +20,9 @@ export default defineComponent({
       isLoading: false,
       isLoggedIn: false,
       cgmData: null as any,
-      errorMessage: ""
+      errorMessage: "",
+      isLinux: false,
+      showToolbar: false
     };
   },
   computed: {
@@ -299,6 +301,16 @@ export default defineComponent({
           console.log("KDE-specific method not available or failed:", kdeError);
         }
         
+        // Try GNOME-specific implementation (for Wayland)
+        try {
+          const result = await invoke<string>('gnome_set_always_on_top', { 
+            enable: this.alwaysOnTop 
+          });
+          console.log("GNOME always-on-top result:", result);
+        } catch (gnomeError) {
+          console.log("GNOME-specific method not available or failed:", gnomeError);
+        }
+        
         // Always use Tauri's built-in method as well (fallback and for other platforms)
         await window.setAlwaysOnTop(this.alwaysOnTop);
         
@@ -339,6 +351,9 @@ export default defineComponent({
     }
   },
   async mounted() {
+    // Detect if running on Linux
+    this.isLinux = navigator.platform.toLowerCase().includes('linux');
+    
     // Log desktop environment info for debugging
     try {
       const desktopInfo = await invoke<string>('get_desktop_environment');
@@ -394,8 +409,10 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="app-window" data-tauri-drag-region>
-    <!-- <div class="titlebar" data-tauri-drag-region>
+  <div class="app-window" data-tauri-drag-region
+       @mouseenter="showToolbar = isLinux"
+       @mouseleave="showToolbar = false">
+    <div v-if="isLinux" class="titlebar linux-titlebar" :class="{ 'titlebar-visible': showToolbar }" data-tauri-drag-region>
       <div class="titlebar-title">LibreLinkup Desktop - Unofficial</div>
       <div class="titlebar-buttons" style="-webkit-app-region: no-drag;">
         <button class="titlebar-button" @click="minimizeWindow" title="Minimize">
@@ -408,7 +425,7 @@ export default defineComponent({
           <span>✕</span>
         </button>
       </div>
-    </div> -->
+    </div>
     
     <main class="container">
       <!-- Login Form -->
@@ -550,6 +567,23 @@ body {
   flex-shrink: 0;
   -webkit-app-region: drag;
   app-region: drag;
+}
+
+.linux-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.linux-titlebar.titlebar-visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .titlebar-title {
@@ -727,6 +761,10 @@ body {
   .titlebar {
     background: linear-gradient(180deg, #3a3a3a 0%, #2f2f2f 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .linux-titlebar {
+    background: rgba(58, 58, 58, 0.95);
   }
 
   .titlebar-title {
