@@ -292,24 +292,22 @@ export default defineComponent({
         console.log("Setting always on top to:", this.alwaysOnTop);
         
         // Try KDE-specific implementation first (only on Linux KDE)
-        try {
-          const result = await invoke<string>('kde_set_always_on_top', { 
-            enable: this.alwaysOnTop 
-          });
+        invoke<string>('kde_set_always_on_top', { 
+          enable: this.alwaysOnTop 
+        }).then(result => {
           console.log("KDE always-on-top result:", result);
-        } catch (kdeError) {
+        }).catch(kdeError => {
           console.log("KDE-specific method not available or failed:", kdeError);
-        }
+        });
         
         // Try GNOME-specific implementation (for Wayland)
-        try {
-          const result = await invoke<string>('gnome_set_always_on_top', { 
-            enable: this.alwaysOnTop 
-          });
+        invoke<string>('gnome_set_always_on_top', { 
+          enable: this.alwaysOnTop 
+        }).then(result => {
           console.log("GNOME always-on-top result:", result);
-        } catch (gnomeError) {
+        }).catch(gnomeError => {
           console.log("GNOME-specific method not available or failed:", gnomeError);
-        }
+        });
         
         // Always use Tauri's built-in method as well (fallback and for other platforms)
         await window.setAlwaysOnTop(this.alwaysOnTop);
@@ -409,7 +407,8 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="app-window" data-tauri-drag-region
+  <div class="app-window" :class="{ 'app-drag-region': !isLinux }"
+       :data-tauri-drag-region="!isLinux ? '' : undefined"
        @mouseenter="showToolbar = isLinux"
        @mouseleave="showToolbar = false">
     <div v-if="isLinux" class="titlebar linux-titlebar" :class="{ 'titlebar-visible': showToolbar }" data-tauri-drag-region>
@@ -552,6 +551,9 @@ body {
   height: 100vh;
   background: #f6f6f6;
   overflow: hidden;
+}
+
+.app-drag-region {
   app-region: drag;
 }
 

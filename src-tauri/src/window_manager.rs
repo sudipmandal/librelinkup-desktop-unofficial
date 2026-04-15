@@ -27,6 +27,11 @@ fn set_kde_always_on_top_x11(window_title: &str, enable: bool) -> Result<(), Str
     // Use wmctrl to set the window state on KDE
     // wmctrl uses EWMH (Extended Window Manager Hints) which KDE respects
     
+    // Skip if no X display is available - wmctrl would hang
+    if std::env::var("DISPLAY").unwrap_or_default().is_empty() {
+        return Err("No X display available, wmctrl cannot be used".to_string());
+    }
+    
     let state_action = if enable { "add" } else { "remove" };
     
     // First, try to find the window by title
@@ -146,6 +151,7 @@ fn set_gnome_always_on_top_dbus(window_title: &str, enable: bool) -> Result<(), 
     let output = Command::new("gdbus")
         .args(&[
             "call", "--session",
+            "--timeout", "3",
             "--dest", "org.gnome.Shell",
             "--object-path", "/org/gnome/Shell",
             "--method", "org.gnome.Shell.Eval",
@@ -175,6 +181,11 @@ fn set_gnome_always_on_top_dbus(window_title: &str, enable: bool) -> Result<(), 
 #[cfg(target_os = "linux")]
 fn set_gnome_always_on_top_wmctrl(window_title: &str, enable: bool) -> Result<(), String> {
     // Fallback: use wmctrl which works on X11 and sometimes via XWayland
+    // Skip if no X display is available (pure Wayland) - wmctrl would hang
+    if std::env::var("DISPLAY").unwrap_or_default().is_empty() {
+        return Err("No X display available (pure Wayland session), wmctrl cannot be used".to_string());
+    }
+    
     let state_action = if enable { "add" } else { "remove" };
     
     let output = Command::new("wmctrl")
