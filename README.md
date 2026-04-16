@@ -9,7 +9,7 @@
 
 > ⚠️ **Disclaimer**: This is an unofficial, community-developed desktop application and is not affiliated with, endorsed by, or connected to Abbott Laboratories or LibreLink/LibreLinkUp. Use at your own risk.
 
-A lightweight, cross-platform desktop application for monitoring your LibreLinkUp CGM (Continuous Glucose Monitor) data. Built with modern web technologies, this app provides a compact, always-accessible widget displaying real-time glucose readings on your desktop.
+A lightweight, cross-platform desktop application for monitoring your LibreLinkUp CGM (Continuous Glucose Monitor) data. Built with Avalonia UI and .NET 8, this app provides a compact, always-accessible widget displaying real-time glucose readings on your desktop.
 
 ## ✨ Key Features
 
@@ -20,12 +20,7 @@ A lightweight, cross-platform desktop application for monitoring your LibreLinkU
 - 🔄 **Auto-refresh**: Updates every 30 seconds automatically
 - 📌 **Always on Top**: Optional setting to keep window visible
 - 🔐 **Credential Storage**: Remembers login for quick access
-- 🌓 **Dark Mode Support**: Adapts to system theme preferences
-- 💻 **Cross-platform**: Windows (MSI/NSIS) and Linux (.deb/AppImage)
-
-## 📸 Screenshot
-
-![LibreLinkUp Desktop Screenshot](src/assets/screenshot.png)
+- 💻 **Cross-platform**: Windows and Linux
 
 ## 📥 Installation & Usage
 
@@ -34,20 +29,13 @@ A lightweight, cross-platform desktop application for monitoring your LibreLinkU
 The easiest way to get started is to download the pre-built application from the [Releases Page](https://github.com/sudipmandal/librelinkup-desktop-unofficial/releases).
 
 **Windows:**
-- Download `LibreLinkup Desktop - Unofficial_*_x64_en-US.msi` (MSI installer)
-- Or `LibreLinkup Desktop - Unofficial_*_x64-setup.exe` (NSIS installer)
-- Run the installer and follow the prompts
+- Download `LibreLinkupDesktop-Unofficial-win-x64.zip`
+- Extract and run `LibreLinkupDesktop-Unofficial.exe`
 
 **Linux:**
-- Download `librelinkup-desktop-unofficial_*_amd64.deb` (Debian/Ubuntu)
-- Or `librelinkup-desktop-unofficial_*_amd64.AppImage` (Universal)
-- For .deb: `sudo dpkg -i librelinkup-desktop-unofficial_*_amd64.deb`
-- For AppImage: `chmod +x *.AppImage && ./librelinkup-desktop-unofficial_*.AppImage`
-- **KDE Plasma users**: For enhanced always-on-top support, install wmctrl: `sudo apt install wmctrl` (Debian/Ubuntu) or `sudo dnf install wmctrl` (Fedora)
-
-**macOS:**
-- Download `LibreLinkup Desktop - Unofficial_*_x64.dmg`
-- Open the DMG and drag the app to Applications
+- Download `LibreLinkupDesktop-Unofficial-linux-x64.tar.gz`
+- Extract: `tar -xzf LibreLinkupDesktop-Unofficial-linux-x64.tar.gz`
+- Run: `chmod +x LibreLinkupDesktop-Unofficial && ./LibreLinkupDesktop-Unofficial`
 
 ### First Run
 
@@ -61,19 +49,18 @@ The app will auto-login on subsequent launches and refresh data every 30 seconds
 
 ## 🏗️ Technical Architecture
 
-- **Frontend**: Vue.js 3 + TypeScript + Vite (Options API)
-- **Desktop Framework**: Tauri 2.x (Rust)
-- **API Integration**: LibreLinkUp API via Tauri HTTP Plugin
-- **Storage**: Tauri Store Plugin (JSON-based preferences)
-- **Build Output**: Native executables (4-6 MB installed size)
+- **UI Framework**: Avalonia UI 11.x
+- **Runtime**: .NET 8
+- **Pattern**: MVVM with CommunityToolkit.Mvvm
+- **API Integration**: HttpClient with LibreLinkUp API
+- **Storage**: JSON-based settings in AppData
+- **Build Output**: Self-contained single-file executables
 
 ## 📋 Prerequisites
 
 To build from source, you need:
 
-1. **Node.js** (v18+) - JavaScript runtime
-2. **Rust** - Systems programming language for Tauri
-3. **Visual Studio Build Tools** (Windows only) - For Rust compilation
+1. **.NET 8 SDK** - [Download from Microsoft](https://dotnet.microsoft.com/download/dotnet/8.0)
 
 **For detailed setup instructions, see [SETUP.md](Docs/SETUP.md)** or [COMPILE-AND-RUN.md](Docs/COMPILE-AND-RUN.md) for step-by-step guidance.
 
@@ -83,8 +70,7 @@ To build from source, you need:
 - [COMPILE-AND-RUN.md](Docs/COMPILE-AND-RUN.md) - Step-by-step compilation
 - [BUILD-GUIDE.md](Docs/BUILD-GUIDE.md) - Cross-platform builds
 - [API_IMPLEMENTATION.md](Docs/API_IMPLEMENTATION.md) - LibreLinkUp API details
-- [STORAGE-GUIDE.md](Docs/STORAGE-GUIDE.md) - Data storage system
-- [VUE-STYLE-GUIDE.md](Docs/VUE-STYLE-GUIDE.md) - Vue.js coding standards
+- [ARCHITECTURE.md](Docs/ARCHITECTURE.md) - Application architecture
 - [QUICK-REFERENCE.md](Docs/QUICK-REFERENCE.md) - Command cheat sheet
 
 ## ⚖️ License

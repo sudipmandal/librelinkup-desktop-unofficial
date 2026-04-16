@@ -1,0 +1,195 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:LibreLinkupDesktopUnofficial.ViewModels"
+        xmlns:models="using:LibreLinkupDesktopUnofficial.Models"
+        x:Class="LibreLinkupDesktopUnofficial.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/app-icon.png"
+        Title="LibreLinkup Desktop - Unofficial"
+        Width="800" Height="600"
+        MinWidth="200" MinHeight="48"
+        CanResize="True"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        SystemDecorations="None"
+        Background="Transparent">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.form-label">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Foreground" Value="#cccccc" />
+        </Style>
+    </Window.Styles>
+
+    <Panel>
+        <!-- Login View -->
+        <Border IsVisible="{Binding !IsLoggedIn}"
+                Background="#2f2f2f"
+                Padding="0">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Drag Region / Title Bar -->
+                <Border Grid.Row="0"
+                        Background="#3a3a3a"
+                        Height="40"
+                        PointerPressed="OnTitleBarPointerPressed">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="LibreLinkup Desktop - Unofficial"
+                                   VerticalAlignment="Center"
+                                   Margin="16,0"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="#f6f6f6" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,0,8,0">
+                            <Button Content="─" Click="OnMinimize" Width="32" Height="32"
+                                    Background="Transparent" BorderThickness="0" Foreground="#cccccc"
+                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+                            <Button Content="□" Click="OnMaximize" Width="32" Height="32"
+                                    Background="Transparent" BorderThickness="0" Foreground="#cccccc"
+                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+                            <Button Content="✕" Click="OnClose" Width="32" Height="32"
+                                    Background="Transparent" BorderThickness="0" Foreground="#cccccc"
+                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Login Form -->
+                <Border Grid.Row="1" Background="#333333" Padding="30" Margin="0">
+                    <StackPanel VerticalAlignment="Top">
+                        <!-- Row 1: Country + Always on Top -->
+                        <Grid ColumnDefinitions="*,*" Margin="0,0,0,20">
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Country" Classes="form-label" />
+                                <ComboBox ItemsSource="{Binding Countries}"
+                                          SelectedIndex="{Binding SelectedCountryIndex}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="models:CountryOption">
+                                            <TextBlock Text="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center"
+                                        HorizontalAlignment="Center" Margin="10,0,0,0">
+                                <CheckBox IsChecked="{Binding AlwaysOnTop}"
+                                          FontSize="14"
+                                          Foreground="#cccccc">
+                                    <TextBlock Text="Always on Top" Foreground="#cccccc" FontSize="14" />
+                                </CheckBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Row 2: Email + Password -->
+                        <Grid ColumnDefinitions="*,*" Margin="0,0,0,20">
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Email" Classes="form-label" />
+                                <TextBox Text="{Binding Email}"
+                                         Watermark="Enter your email" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                <TextBlock Text="Password" Classes="form-label" />
+                                <TextBox Text="{Binding Password}"
+                                         PasswordChar="•"
+                                         Watermark="Enter your password" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Error Message -->
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   IsVisible="{Binding HasError}"
+                                   Foreground="#e81123"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,16" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Login Button area -->
+                <Border Grid.Row="2" Background="#3a3a3a" Padding="30,20">
+                    <StackPanel>
+                        <Button Content="{Binding LoginButtonText}"
+                                Command="{Binding HandleLoginCommand}"
+                                IsEnabled="{Binding IsLoginEnabled}"
+                                HorizontalAlignment="Center"
+                                HorizontalContentAlignment="Center"
+                                MinWidth="200"
+                                Padding="24,10"
+                                Background="#0078d4"
+                                Foreground="White"
+                                FontWeight="SemiBold"
+                                FontSize="14"
+                                CornerRadius="4" />
+
+                        <!-- Debug Log -->
+                        <ListBox ItemsSource="{Binding LogLines}"
+                                 IsVisible="{Binding HasLogLines}"
+                                 Height="200"
+                                 Margin="0,16,0,0"
+                                 FontSize="11"
+                                 FontFamily="Consolas, 'Courier New', monospace"
+                                 Background="#1e1e1e"
+                                 Foreground="#d4d4d4"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 x:Name="LogListBox" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- CGM Display View -->
+        <Border IsVisible="{Binding IsLoggedIn}"
+                Background="{Binding GlucoseBackgroundBrush}"
+                CornerRadius="0"
+                Padding="0">
+            <Panel>
+                <!-- Logout gear button -->
+                <Button Click="OnLogoutClick"
+                        Width="24" Height="24"
+                        Background="#E6FFFFFF"
+                        BorderBrush="#DDDDDD"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,5,5,0"
+                        ZIndex="1000"
+                        ToolTip.Tip="Logout">
+                    <TextBlock Text="⚙" FontSize="16" Foreground="#666666"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Button>
+
+                <!-- Glucose display -->
+                <StackPanel HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            PointerPressed="OnTitleBarPointerPressed">
+                    <TextBlock Text="{Binding GlucoseTimestamp}"
+                               Foreground="White"
+                               FontSize="10"
+                               HorizontalAlignment="Center"
+                               Opacity="0.9" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                Spacing="8">
+                        <TextBlock Text="{Binding GlucoseValue}"
+                                   Foreground="White"
+                                   FontSize="24"
+                                   FontWeight="Bold" />
+                        <TextBlock Text="{Binding GlucoseUnit}"
+                                   Foreground="White"
+                                   FontSize="12"
+                                   VerticalAlignment="Center"
+                                   Opacity="0.9" />
+                        <TextBlock Text="{Binding GlucoseTrend}"
+                                   Foreground="White"
+                                   FontSize="18"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+            </Panel>
+        </Border>
+    </Panel>
+</Window>

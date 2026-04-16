@@ -1,32 +1,33 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Build outputs
+bin/
+obj/
+publish/
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# IDE
+.vs/
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+!.vscode/tasks.json
+.idea/
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+*.user
+*.userosscache
+*.sln.docstates
 
-# Tauri build outputs
-src-tauri/target/
-src-tauri/Cargo.lock
+# OS files
+.DS_Store
+Thumbs.db
 
-# Store plugin - user settings
+# .NET
+*.nupkg
+*.snupkg
+project.lock.json
+*.nuget.props
+*.nuget.targets
+
+# User settings
 *.settings.json
 settings.json
+
+# Logs
+*.log
