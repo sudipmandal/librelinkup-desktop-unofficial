@@ -1,6 +1,6 @@
 [package]
 name = "librelinkup-desktop-unofficial"
-version = "0.1.0"
+version = "0.1.4"
 description = "LibreLinkup Desktop - Unofficial"
 authors = ["Sudip Mandal"]
 edition = "2021"
@@ -21,7 +21,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
-tauri-plugin-http = "2"
+tauri-plugin-http = "2.5.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
