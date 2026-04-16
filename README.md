@@ -26,16 +26,7 @@ A lightweight, cross-platform desktop application for monitoring your LibreLinkU
 
 ### Download Pre-built App
 
-The easiest way to get started is to download the pre-built application from the [Releases Page](https://github.com/sudipmandal/librelinkup-desktop-unofficial/releases).
-
-**Windows:**
-- Download `LibreLinkupDesktop-Unofficial-win-x64.zip`
-- Extract and run `LibreLinkupDesktop-Unofficial.exe`
-
-**Linux:**
-- Download `LibreLinkupDesktop-Unofficial-linux-x64.tar.gz`
-- Extract: `tar -xzf LibreLinkupDesktop-Unofficial-linux-x64.tar.gz`
-- Run: `chmod +x LibreLinkupDesktop-Unofficial && ./LibreLinkupDesktop-Unofficial`
+The easiest way to get started is to download and install the pre-built application from the [Releases Page](https://github.com/sudipmandal/librelinkup-desktop-unofficial/releases).
 
 ### First Run
 
