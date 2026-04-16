@@ -7,21 +7,31 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - id: resolve
+        run: |
+          if [[ "${{ github.ref_name }}" == v* ]]; then
+            VER="${{ github.ref_name }}"
+            VER="${VER#v}"
+            TAG="${{ github.ref_name }}"
+          else
+            VER="0.1.0-build.$(date -u +'%Y%m%d-%H%M')"
+            TAG="v${VER}"
+          fi
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${VER}, tag: ${TAG}"
+
+  build-linux:
+    needs: version
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: ubuntu-22.04
-            runtime: linux-x64
-            artifact-name: LibreLinkupDesktop-Unofficial-linux-x64
-          - platform: windows-latest
-            runtime: win-x64
-            artifact-name: LibreLinkupDesktop-Unofficial-win-x64
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,20 +48,144 @@ jobs:
         run: >
           dotnet publish src/LibreLinkupDesktop-Unofficial/LibreLinkupDesktop-Unofficial.csproj
           -c Release
-          -r ${{ matrix.runtime }}
+          -r linux-x64
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -o publish/${{ matrix.runtime }}
+          -p:Version=${{ needs.version.outputs.version }}
+          -o publish/linux-x64
 
-      - name: Upload build artifact
+      - name: Create .deb package
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          PKG_DIR="deb-build/librelinkup-desktop-unofficial_${VERSION}_amd64"
+
+          mkdir -p "${PKG_DIR}/DEBIAN"
+          mkdir -p "${PKG_DIR}/usr/bin"
+          mkdir -p "${PKG_DIR}/usr/share/applications"
+
+          cp publish/linux-x64/LibreLinkupDesktop-Unofficial "${PKG_DIR}/usr/bin/librelinkup-desktop-unofficial"
+          chmod 755 "${PKG_DIR}/usr/bin/librelinkup-desktop-unofficial"
+
+          cat > "${PKG_DIR}/DEBIAN/control" << EOF
+          Package: librelinkup-desktop-unofficial
+          Version: ${VERSION}
+          Section: misc
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Sudip Mandal
+          Description: LibreLinkup Desktop - Unofficial
+           A lightweight desktop application for monitoring LibreLinkUp CGM data.
+          EOF
+          # Remove leading whitespace from control file
+          sed -i 's/^          //' "${PKG_DIR}/DEBIAN/control"
+
+          cat > "${PKG_DIR}/usr/share/applications/librelinkup-desktop-unofficial.desktop" << EOF
+          [Desktop Entry]
+          Name=LibreLinkup Desktop - Unofficial
+          Comment=Monitor LibreLinkUp CGM data
+          Exec=/usr/bin/librelinkup-desktop-unofficial
+          Terminal=false
+          Type=Application
+          Categories=Utility;Health;
+          EOF
+          sed -i 's/^          //' "${PKG_DIR}/usr/share/applications/librelinkup-desktop-unofficial.desktop"
+
+          dpkg-deb --build "${PKG_DIR}"
+          cp deb-build/*.deb publish/
+
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact-name }}
-          path: publish/${{ matrix.runtime }}
+          name: LibreLinkupDesktop-Unofficial-linux-x64
+          path: publish/linux-x64
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LibreLinkupDesktop-Unofficial-linux-deb
+          path: publish/*.deb
+
+  build-windows:
+    needs: version
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore LibreLinkupDesktop-Unofficial.sln
+
+      - name: Publish self-contained
+        run: >
+          dotnet publish src/LibreLinkupDesktop-Unofficial/LibreLinkupDesktop-Unofficial.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=${{ needs.version.outputs.version }}
+          -o publish/win-x64
+
+      - name: Install WiX Toolset
+        run: dotnet tool install --global wix
+
+      - name: Create .msi package
+        shell: pwsh
+        run: |
+          $version = "${{ needs.version.outputs.version }}"
+          # MSI version must be numeric X.Y.Z - strip any prerelease suffix
+          $msiVersion = ($version -split '-')[0]
+          $parts = $msiVersion.Split('.')
+          while ($parts.Count -lt 3) { $parts += "0" }
+          $msiVersion = ($parts[0..2]) -join '.'
+
+          $wxsContent = @"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+            <Package Name="LibreLinkup Desktop - Unofficial"
+                     Manufacturer="Sudip Mandal"
+                     Version="$msiVersion"
+                     UpgradeCode="E7A1C3D4-B5F6-4890-ABCD-EF1234567890">
+              <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+              <MediaTemplate EmbedCab="yes" />
+              <StandardDirectory Id="ProgramFiles6432Folder">
+                <Directory Id="INSTALLFOLDER" Name="LibreLinkupDesktop-Unofficial">
+                  <Component Id="MainExecutable" Guid="F8B2D4E6-C7A8-4901-BCDE-FA2345678901">
+                    <File Id="MainExe" Source="publish\win-x64\LibreLinkupDesktop-Unofficial.exe" KeyPath="yes" />
+                  </Component>
+                </Directory>
+              </StandardDirectory>
+              <Feature Id="Complete" Level="1">
+                <ComponentRef Id="MainExecutable" />
+              </Feature>
+            </Package>
+          </Wix>
+          "@
+          $wxsContent | Set-Content -Path "installer.wxs" -Encoding UTF8
+          wix build installer.wxs -o "publish\LibreLinkupDesktop-Unofficial-$version-x64.msi"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LibreLinkupDesktop-Unofficial-win-x64
+          path: publish/win-x64
+
+      - name: Upload msi artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LibreLinkupDesktop-Unofficial-win-msi
+          path: publish/*.msi
 
   release:
-    needs: build
+    needs: [version, build-linux, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -61,29 +195,37 @@ jobs:
         with:
           path: artifacts
 
-      - name: Create archives
+      - name: Create archives and collect installers
         run: |
-          cd artifacts
-          for dir in */; do
-            name="${dir%/}"
-            if [[ "$name" == *"linux"* ]]; then
-              chmod +x "$dir"LibreLinkupDesktop-Unofficial || true
-              tar -czf "${name}.tar.gz" -C "$dir" .
-            else
-              zip -r "${name}.zip" "$dir"
-            fi
-          done
+          mkdir -p release-files
+
+          # Create tar.gz from linux binary
+          cd artifacts/LibreLinkupDesktop-Unofficial-linux-x64
+          chmod +x LibreLinkupDesktop-Unofficial || true
+          tar -czf "../../release-files/LibreLinkupDesktop-Unofficial-linux-x64.tar.gz" .
+          cd ../..
+
+          # Create zip from windows binary
+          cd artifacts/LibreLinkupDesktop-Unofficial-win-x64
+          zip -r "../../release-files/LibreLinkupDesktop-Unofficial-win-x64.zip" .
+          cd ../..
+
+          # Copy .deb and .msi
+          cp artifacts/LibreLinkupDesktop-Unofficial-linux-deb/*.deb release-files/ || true
+          cp artifacts/LibreLinkupDesktop-Unofficial-win-msi/*.msi release-files/ || true
+
+          echo "Release files:"
+          ls -la release-files/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || 'latest' }}
-          name: LibreLinkup Desktop ${{ github.ref_name }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: LibreLinkup Desktop v${{ needs.version.outputs.version }}
           body: 'See the assets to download and install this version.'
           draft: true
           prerelease: false
           files: |
-            artifacts/*.tar.gz
-            artifacts/*.zip
+            release-files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
