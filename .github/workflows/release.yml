@@ -134,43 +134,41 @@ jobs:
           -p:Version=${{ needs.version.outputs.version }}
           -o publish/win-x64
 
-      - name: Install WiX Toolset
-        run: dotnet tool install --global wix
-
-      - name: Create .msi package
+      - name: Create .exe installer
         shell: pwsh
         run: |
           $version = "${{ needs.version.outputs.version }}"
-          # MSI version must be numeric X.Y.Z - strip any prerelease suffix
-          $msiVersion = ($version -split '-')[0]
-          $parts = $msiVersion.Split('.')
-          while ($parts.Count -lt 3) { $parts += "0" }
-          $msiVersion = ($parts[0..2]) -join '.'
 
-          $wxsContent = @"
-          <?xml version="1.0" encoding="UTF-8"?>
-          <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-            <Package Name="LibreLinkup Desktop - Unofficial"
-                     Manufacturer="Sudip Mandal"
-                     Version="$msiVersion"
-                     UpgradeCode="E7A1C3D4-B5F6-4890-ABCD-EF1234567890">
-              <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
-              <MediaTemplate EmbedCab="yes" />
-              <StandardDirectory Id="ProgramFiles6432Folder">
-                <Directory Id="INSTALLFOLDER" Name="LibreLinkupDesktop-Unofficial">
-                  <Component Id="MainExecutable" Guid="F8B2D4E6-C7A8-4901-BCDE-FA2345678901">
-                    <File Id="MainExe" Source="publish\win-x64\LibreLinkupDesktop-Unofficial.exe" KeyPath="yes" />
-                  </Component>
-                </Directory>
-              </StandardDirectory>
-              <Feature Id="Complete" Level="1">
-                <ComponentRef Id="MainExecutable" />
-              </Feature>
-            </Package>
-          </Wix>
+          $issContent = @"
+          [Setup]
+          AppName=LibreLinkup Desktop - Unofficial
+          AppVersion=$version
+          AppPublisher=Sudip Mandal
+          DefaultDirName={autopf}\LibreLinkupDesktop-Unofficial
+          DefaultGroupName=LibreLinkup Desktop - Unofficial
+          OutputDir=publish
+          OutputBaseFilename=LibreLinkupDesktop-Unofficial-$version-x64-setup
+          Compression=lzma2
+          SolidCompression=yes
+          ArchitecturesAllowed=x64compatible
+          ArchitecturesInstallIn64BitMode=x64compatible
+          UninstallDisplayIcon={app}\LibreLinkupDesktop-Unofficial.exe
+
+          [Files]
+          Source: "publish\win-x64\LibreLinkupDesktop-Unofficial.exe"; DestDir: "{app}"; Flags: ignoreversion
+
+          [Icons]
+          Name: "{group}\LibreLinkup Desktop - Unofficial"; Filename: "{app}\LibreLinkupDesktop-Unofficial.exe"
+          Name: "{autodesktop}\LibreLinkup Desktop - Unofficial"; Filename: "{app}\LibreLinkupDesktop-Unofficial.exe"; Tasks: desktopicon
+
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
+
+          [Run]
+          Filename: "{app}\LibreLinkupDesktop-Unofficial.exe"; Description: "Launch LibreLinkup Desktop"; Flags: nowait postinstall skipifsilent
           "@
-          $wxsContent | Set-Content -Path "installer.wxs" -Encoding UTF8
-          wix build installer.wxs -o "publish\LibreLinkupDesktop-Unofficial-$version-x64.msi"
+          $issContent | Set-Content -Path "installer.iss" -Encoding UTF8
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer.iss"
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
@@ -178,11 +176,11 @@ jobs:
           name: LibreLinkupDesktop-Unofficial-win-x64
           path: publish/win-x64
 
-      - name: Upload msi artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LibreLinkupDesktop-Unofficial-win-msi
-          path: publish/*.msi
+          name: LibreLinkupDesktop-Unofficial-win-setup
+          path: publish/*-setup.exe
 
   release:
     needs: [version, build-linux, build-windows]
@@ -210,9 +208,9 @@ jobs:
           zip -r "../../release-files/LibreLinkupDesktop-Unofficial-win-x64.zip" .
           cd ../..
 
-          # Copy .deb and .msi
+          # Copy .deb and .exe installer
           cp artifacts/LibreLinkupDesktop-Unofficial-linux-deb/*.deb release-files/ || true
-          cp artifacts/LibreLinkupDesktop-Unofficial-win-msi/*.msi release-files/ || true
+          cp artifacts/LibreLinkupDesktop-Unofficial-win-setup/*-setup.exe release-files/ || true
 
           echo "Release files:"
           ls -la release-files/
