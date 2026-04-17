@@ -9,7 +9,10 @@
 
 > ⚠️ **Disclaimer**: This is an unofficial, community-developed desktop application and is not affiliated with, endorsed by, or connected to Abbott Laboratories or LibreLink/LibreLinkUp. Use at your own risk.
 
-A lightweight, cross-platform desktop application for monitoring your LibreLinkUp CGM (Continuous Glucose Monitor) data. Built with Avalonia UI and .NET 8, this app provides a compact, always-accessible widget displaying real-time glucose readings on your desktop.
+Freestyle Libre 3 plus CGM sensor does not currently have any official app from Abbot that displays the real time data on PC, this is a  lightweight, cross-platform desktop application built with Avalonia UI and .NET 8 which fills this gap, it provides a compact, always-accessible widget displaying real-time glucose readings on your desktop, so you dont have to keep unlocking your phone while working on your PC or laptop.
+
+<img width="1226" height="740" alt="image" src="https://github.com/user-attachments/assets/6416c959-46c9-4b76-98c4-ca9e15a64748" />
+
 
 ## ✨ Key Features
 
