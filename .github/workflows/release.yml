@@ -13,16 +13,24 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}
       tag: ${{ steps.resolve.outputs.tag }}
     steps:
-      - id: resolve
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve and increment version
+        id: resolve
         run: |
           if [[ "${{ github.ref_name }}" == v* ]]; then
             VER="${{ github.ref_name }}"
             VER="${VER#v}"
-            TAG="${{ github.ref_name }}"
           else
-            VER="0.1.0-build.$(date -u +'%Y%m%d-%H%M')"
-            TAG="v${VER}"
+            # Read current version from .csproj and increment minor version
+            CURRENT_VERSION=$(grep -oP '<Version>\K[^<]+' src/LibreLinkupDesktop-Unofficial/LibreLinkupDesktop-Unofficial.csproj)
+            echo "Current version: ${CURRENT_VERSION}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT_VERSION}"
+            MINOR=$((MINOR + 1))
+            VER="${MAJOR}.${MINOR}.${PATCH}"
           fi
+          TAG="v${VER}"
           echo "version=${VER}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Resolved version: ${VER}, tag: ${TAG}"
@@ -63,9 +71,15 @@ jobs:
           mkdir -p "${PKG_DIR}/DEBIAN"
           mkdir -p "${PKG_DIR}/usr/bin"
           mkdir -p "${PKG_DIR}/usr/share/applications"
+          mkdir -p "${PKG_DIR}/usr/share/icons/hicolor/256x256/apps"
+          mkdir -p "${PKG_DIR}/usr/share/pixmaps"
 
           cp publish/linux-x64/LibreLinkupDesktop-Unofficial "${PKG_DIR}/usr/bin/librelinkup-desktop-unofficial"
           chmod 755 "${PKG_DIR}/usr/bin/librelinkup-desktop-unofficial"
+
+          # Install application icon
+          cp src/LibreLinkupDesktop-Unofficial/Assets/app-icon.png "${PKG_DIR}/usr/share/icons/hicolor/256x256/apps/librelinkup-desktop-unofficial.png"
+          cp src/LibreLinkupDesktop-Unofficial/Assets/app-icon.png "${PKG_DIR}/usr/share/pixmaps/librelinkup-desktop-unofficial.png"
 
           cat > "${PKG_DIR}/DEBIAN/control" << EOF
           Package: librelinkup-desktop-unofficial
@@ -74,8 +88,11 @@ jobs:
           Priority: optional
           Architecture: amd64
           Maintainer: Sudip Mandal
+          Homepage: https://github.com/${{ github.repository }}
           Description: LibreLinkup Desktop - Unofficial
            A lightweight desktop application for monitoring LibreLinkUp CGM data.
+           Provides real-time glucose readings, trend arrows, and historical data
+           from the LibreLinkUp service.
           EOF
           # Remove leading whitespace from control file
           sed -i 's/^          //' "${PKG_DIR}/DEBIAN/control"
@@ -83,11 +100,15 @@ jobs:
           cat > "${PKG_DIR}/usr/share/applications/librelinkup-desktop-unofficial.desktop" << EOF
           [Desktop Entry]
           Name=LibreLinkup Desktop - Unofficial
+          GenericName=CGM Monitor
           Comment=Monitor LibreLinkUp CGM data
           Exec=/usr/bin/librelinkup-desktop-unofficial
+          Icon=librelinkup-desktop-unofficial
           Terminal=false
           Type=Application
-          Categories=Utility;Health;
+          Categories=Utility;Health;Monitor;
+          Keywords=glucose;cgm;diabetes;libre;monitor;
+          StartupWMClass=LibreLinkupDesktop-Unofficial
           EOF
           sed -i 's/^          //' "${PKG_DIR}/usr/share/applications/librelinkup-desktop-unofficial.desktop"
 
@@ -195,17 +216,18 @@ jobs:
 
       - name: Create archives and collect installers
         run: |
+          VERSION="${{ needs.version.outputs.version }}"
           mkdir -p release-files
 
           # Create tar.gz from linux binary
           cd artifacts/LibreLinkupDesktop-Unofficial-linux-x64
           chmod +x LibreLinkupDesktop-Unofficial || true
-          tar -czf "../../release-files/LibreLinkupDesktop-Unofficial-linux-x64.tar.gz" .
+          tar -czf "../../release-files/LibreLinkupDesktop-Unofficial-v${VERSION}-linux-x64.tar.gz" .
           cd ../..
 
           # Create zip from windows binary
           cd artifacts/LibreLinkupDesktop-Unofficial-win-x64
-          zip -r "../../release-files/LibreLinkupDesktop-Unofficial-win-x64.zip" .
+          zip -r "../../release-files/LibreLinkupDesktop-Unofficial-v${VERSION}-win-x64.zip" .
           cd ../..
 
           # Copy .deb and .exe installer
@@ -227,3 +249,19 @@ jobs:
             release-files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout repository for version bump
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+
+      - name: Commit version bump to .csproj
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          CURRENT_VERSION=$(grep -oP '<Version>\K[^<]+' src/LibreLinkupDesktop-Unofficial/LibreLinkupDesktop-Unofficial.csproj)
+          sed -i "s|<Version>${CURRENT_VERSION}</Version>|<Version>${VERSION}</Version>|" src/LibreLinkupDesktop-Unofficial/LibreLinkupDesktop-Unofficial.csproj
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/LibreLinkupDesktop-Unofficial/LibreLinkupDesktop-Unofficial.csproj
+          git diff --cached --quiet || git commit -m "Bump version to ${VERSION} [skip ci]"
+          git push
