@@ -10,7 +10,7 @@
     <AssemblyName>LibreLinkupDesktop-Unofficial</AssemblyName>
     <RootNamespace>LibreLinkupDesktopUnofficial</RootNamespace>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Product>LibreLinkup Desktop - Unofficial</Product>
     <Description>A lightweight desktop application for monitoring LibreLinkUp CGM data</Description>
   </PropertyGroup>
